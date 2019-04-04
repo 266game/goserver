@@ -20,6 +20,9 @@ type TTCPServer struct {
 
 	OnRun  func()            // 自处理循环回调
 	OnRead func(*conn.TData) // 读取回调(buf, 包长, sessionid)
+
+	OnClientConnect    func(*conn.TConnection) // 客户端连接上来了
+	OnClientDisconnect func(*conn.TConnection) // 客户端断开了
 }
 
 func init() {
@@ -95,10 +98,18 @@ func (self *TTCPServer) run() {
 		pConnection := conn.CreateConnection(tcpConn)
 		strRemoteAddr := tcpConn.RemoteAddr()
 		log.Println("监听到客户端的", strRemoteAddr, "连接")
+		if self.OnClientConnect != nil {
+			self.OnClientConnect(pConnection)
+		}
+
 		go func() {
 			defer func() {
 				log.Println(strRemoteAddr, "断开连接")
-				// self.mpSession.Delete(nTCPIndex)
+
+				if self.OnClientDisconnect != nil {
+					self.OnClientDisconnect(pConnection)
+				}
+
 				pConnection.Close()
 				self.wgConns.Done()
 			}()
