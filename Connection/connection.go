@@ -20,10 +20,10 @@ func (self *TConnection) Read(b []byte) (int, error) {
 	return self.pTCPConn.Read(b)
 }
 
-// // Write 写字节
-// func (self *TSession) Write(buff []byte) (int, error) {
-// 	return self.pTCPConn.Write(buff)
-// }
+// Write 写字节
+func (self *TConnection) Write(buff []byte) (int, error) {
+	return self.pTCPConn.Write(buff)
+}
 
 // WritePack 写字节, 并且自动补齐包头部分
 func (self *TConnection) WritePack(buff []byte) (int, error) {
