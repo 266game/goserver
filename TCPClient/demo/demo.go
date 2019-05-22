@@ -14,7 +14,7 @@ func main() {
 
 	pClient.OnRead = func(pData *conn.TData) {
 		buf := pData.GetBuffer()
-		nLen := pData.GetIndex()
+		nLen := pData.GetLength()
 		log.Println("收到包了长度是", nLen, "\n", string(buf), "\n", buf)
 	}
 
@@ -22,7 +22,7 @@ func main() {
 		log.Println(pConn.GetTCPConn().RemoteAddr(), "连接成功")
 	}
 
-	pClient.Connect("127.0.0.1:4567")
+	pClient.Connect("127.0.0.1:8083")
 
 	strSending := ""
 	for {
