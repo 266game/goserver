@@ -121,8 +121,10 @@ func (self *TTCPClient) run() {
 	self.pConnection.Close()
 	self.pConnection = nil
 
-	time.Sleep(time.Second * 3) // 3秒后继续
-	self.run()
+	if self.AutoReconnect {
+		time.Sleep(time.Second * 3) // 3秒后继续
+		self.run()
+	}
 }
 
 // Close 关闭连接
