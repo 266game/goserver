@@ -41,6 +41,15 @@ func (self *TTCPClient) Connect(strAddress string) {
 	go self.run() // 尝试连接
 }
 
+// Write 发送包
+func (self *TTCPClient) Write(buff []byte) (int, error) {
+	if self.pConnection == nil {
+		log.Println("客户端未连接")
+		return -1, errors.New("client have not connected")
+	}
+	return self.pConnection.Write(buff)
+}
+
 // WritePack 发送封包, 并且自动粘头
 func (self *TTCPClient) WritePack(buff []byte) (int, error) {
 	if self.pConnection == nil {
@@ -167,25 +176,3 @@ func (self *TTCPClient) unpack(buf []byte, nLen int, pConnection *conn.TConnecti
 
 	return nil
 }
-
-// // 创建一个新的session来使用
-// func (self *TTCPClient) session(buff []byte, nLen int, tcpConn *net.TCPConn) *session.TSession {
-// 	// 自增索引
-// 	nTCPIndex := self.nAutoIncrease
-// 	// 构建一个Session
-// 	pSession := &session.TSession{} // 上下文会话消息
-// 	pSession.SetTCPConn(tcpConn)
-// 	pSession.SetAutoIncrease(nTCPIndex)
-// 	pSession.SetData(buff, nLen)
-// 	// 保存session
-// 	self.mpSession.Store(nTCPIndex, pSession)
-// 	self.nAutoIncrease++ // 自动递增
-
-// 	// 设置15秒超时后自动干掉
-// 	go func() {
-// 		time.Sleep(time.Second * 15)
-// 		self.mpSession.Delete(nTCPIndex)
-// 	}()
-
-// 	return pSession
-// }
