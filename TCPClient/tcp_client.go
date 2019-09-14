@@ -21,7 +21,7 @@ type TTCPClient struct {
 	bClose        bool              // 关闭状态
 	pConnection   *conn.TConnection // 连接消息
 
-	OnRun        func()                  //
+	OnRun        func(*conn.TConnection) //
 	OnRead       func(*conn.TData)       // 读取回调
 	OnConnect    func(*conn.TConnection) // 连接成功
 	OnDisconnect func(*conn.TConnection) // 断开成功
@@ -93,7 +93,7 @@ func (self *TTCPClient) run() {
 	// 在这里进行收包处理
 	func() {
 		if self.OnRun != nil {
-			self.OnRun()
+			self.OnRun(self.pConnection)
 			return
 		}
 
