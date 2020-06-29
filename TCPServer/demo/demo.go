@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	conn "github.com/266game/goserver/Connection"
 	tcpserver "github.com/266game/goserver/TCPServer"
+	conn "github.com/266game/goserver/connection"
 )
 
 func main() {

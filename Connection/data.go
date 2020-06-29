@@ -1,4 +1,4 @@
-﻿package connection
+﻿package conn
 
 // TData 数据
 type TData struct {
