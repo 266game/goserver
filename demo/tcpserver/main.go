@@ -1,17 +1,16 @@
-﻿package main
+package main
 
 import (
 	"fmt"
 	"time"
 
-	conn "github.com/266game/goserver/connection"
-	tcpserver "github.com/266game/goserver/tcpserver"
+	"github.com/266game/goserver/tcp"
 )
 
 func main() {
-	pServer := tcpserver.NewTCPServer()
+	pServer := tcp.NewTCPServer()
 
-	pServer.OnRead = func(pData *conn.TData) {
+	pServer.OnRead = func(pData *tcp.TData) {
 		buf := pData.GetBuffer()
 		nLen := pData.GetLength()
 
