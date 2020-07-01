@@ -94,7 +94,7 @@ func (self *TTCPServer) run() {
 		self.wgConns.Add(1)
 
 		pConnection := CreateConnection(tcpConn)
-		strRemoteAddr := tcpConn.RemoteAddr()
+		strRemoteAddr := pConnection.RemoteAddr()
 		log.Println("监听到客户端的", strRemoteAddr, "连接")
 		if self.OnClientConnect != nil {
 			self.OnClientConnect(pConnection)
