@@ -26,6 +26,8 @@ func main() {
 			}
 			log.Println("实际接收的包长", nLen, err)
 			log.Println(string(buf[:nLen]))
+
+			go pConnection.Write(buf[:nLen])
 		}
 	}
 
