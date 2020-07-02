@@ -13,9 +13,9 @@ func main() {
 
 	pServer.Start(":4567")
 
-	pServer.OnRead = func(pData *conn.TData) {
-		pData.Print()
-	}
+	// pServer.OnRead = func(pData *conn.TData) {
+	// 	pData.Print()
+	// }
 
 	pServer.OnRun = func(pConnection *conn.TConnection) {
 		buf := make([]byte, 4096)

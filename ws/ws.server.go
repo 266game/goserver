@@ -66,7 +66,10 @@ func (self *TWSServer) run() {
 				// defer self.wg.Done()
 
 				pConnection := conn.CreateConnection(tcpConn)
-				strRemoteAddr := pConnection.RemoteAddr()
+				log.Println("pConnection", pConnection)
+				strRemoteAddr := pConnection.RemoteAddr().String()
+				log.Println("strRemoteAddr", strRemoteAddr)
+
 				log.Println("监听到客户端的", strRemoteAddr, "连接")
 
 				defer func() {
