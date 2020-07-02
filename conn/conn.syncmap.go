@@ -1,7 +1,6 @@
-package tcp
+package conn
 
 import (
-	"net"
 	"sync"
 )
 
@@ -14,12 +13,12 @@ func init() {
 }
 
 // CreateConnection 创建一个新的连接
-func CreateConnection(pTCPConn *net.TCPConn) *TConnection {
+func CreateConnection(pConn IConn) *TConnection {
 	nAutoIncrease++
 	n := nAutoIncrease
 	pConnection := &TConnection{}
 	pConnection.nIndex = n
-	pConnection.pTCPConn = pTCPConn
+	pConnection.pConn = pConn
 	mpConnection.Store(n, pConnection)
 	return pConnection
 }

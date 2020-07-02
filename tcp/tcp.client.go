@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	"github.com/266game/goserver/conn"
 )
 
 func init() {
@@ -16,13 +18,13 @@ func init() {
 type TTCPClient struct {
 	strAddress    string // 需要连接的服务器地址
 	AutoReconnect bool
-	bClose        bool         // 关闭状态
-	pConnection   *TConnection // 连接消息
+	bClose        bool              // 关闭状态
+	pConnection   *conn.TConnection // 连接消息
 
-	OnRun        func(*TConnection) //
-	OnRead       func(*TData)       // 读取回调
-	OnConnect    func(*TConnection) // 连接成功
-	OnDisconnect func(*TConnection) // 断开成功
+	OnRun        func(*conn.TConnection) //
+	OnRead       func(*conn.TData)       // 读取回调
+	OnConnect    func(*conn.TConnection) // 连接成功
+	OnDisconnect func(*conn.TConnection) // 断开成功
 }
 
 // NewTCPClient 新建
@@ -83,7 +85,7 @@ func (self *TTCPClient) run() {
 		return
 	}
 
-	self.pConnection = CreateConnection(tcpConn)
+	self.pConnection = conn.CreateConnection(tcpConn)
 	strRemoteAddr := tcpConn.RemoteAddr()
 	// 如果关闭了, 那么就关闭连接
 	if self.bClose {
@@ -141,20 +143,20 @@ func (self *TTCPClient) Close() {
 }
 
 // 拆包
-func (self *TTCPClient) unpack(buf []byte, nLen int, pConnection *TConnection) error {
+func (self *TTCPClient) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
 	// 我们规定前两个字节是包的实际长度, 我们认为棋牌游戏当中是不可能超过单个包10K的容量
 	nPackageLen := int(buf[0]) + int(buf[1])<<8
 
 	if nPackageLen == nLen {
 		// 包长符合, 包满足,直接派发
 		log.Println("包长符合")
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		return nil
 	}
 
 	if nPackageLen < nLen {
 		// 这个包需要拆包处理
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		self.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
 		return nil
 	}

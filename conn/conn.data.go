@@ -1,4 +1,8 @@
-package tcp
+package conn
+
+import (
+	"fmt"
+)
 
 // TData 数据
 type TData struct {
@@ -34,4 +38,20 @@ func (self *TData) GetConnection() *TConnection {
 // GetLength 获取长度
 func (self *TData) GetLength() int {
 	return self.nLen
+}
+
+// Print 打印
+func (self *TData) Print() {
+	buf := self.GetBuffer()
+	nLen := self.GetLength()
+
+	fmt.Print("     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F")
+	for i := 0; i < nLen; i++ {
+		if i%16 == 0 {
+			fmt.Printf("\n%04d", i/16)
+		}
+		fmt.Printf(" %02x", buf[i])
+
+	}
+	fmt.Println("\n    ", string(buf)) //打印出来
 }

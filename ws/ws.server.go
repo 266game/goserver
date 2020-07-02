@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/266game/goserver/conn"
 	"golang.org/x/net/websocket"
 )
 
@@ -20,11 +21,10 @@ type TWSServer struct {
 	wgLn        sync.WaitGroup
 	wgConns     sync.WaitGroup
 
-	OnRun  func(*TConnection) // 自处理循环回调
-	OnRead func(*TData)       // 读取回调(buf, 包长, sessionid)
-
-	OnClientConnect    func(*TConnection) // 客户端连接上来了
-	OnClientDisconnect func(*TConnection) // 客户端断开了
+	OnRun              func(*conn.TConnection) // 自处理循环回调
+	OnRead             func(*conn.TData)       // 读取回调(buf, 包长, sessionid)
+	OnClientConnect    func(*conn.TConnection) // 客户端连接上来了
+	OnClientDisconnect func(*conn.TConnection) // 客户端断开了
 }
 
 // Start 开启
@@ -65,7 +65,7 @@ func (self *TWSServer) run() {
 				// self.wg.Add(1)
 				// defer self.wg.Done()
 
-				pConnection := CreateConnection(tcpConn)
+				pConnection := conn.CreateConnection(tcpConn)
 				strRemoteAddr := pConnection.RemoteAddr()
 				log.Println("监听到客户端的", strRemoteAddr, "连接")
 
@@ -124,7 +124,7 @@ func (self *TWSServer) Close() {
 }
 
 // 拆包
-func (self *TWSServer) unpack(buf []byte, nLen int, pConnection *TConnection) error {
+func (self *TWSServer) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
 	// 我们规定前两个字节是包的实际长度, 我们认为棋牌游戏当中是不可能超过单个包10K的容量
 	nPackageLen := int(buf[0]) + int(buf[1])<<8
 
@@ -132,14 +132,14 @@ func (self *TWSServer) unpack(buf []byte, nLen int, pConnection *TConnection) er
 		// 包长符合, 包满足,直接派发
 		log.Println("包长符合, 包满足,直接派发", nLen)
 		// pSession := self.session(, pConnection)
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		return nil
 	}
 
 	if nPackageLen < nLen {
 		// 这个包需要拆包处理
 		// pSession := self.session(buf[2:nPackageLen], nPackageLen-2, pConnection)
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		self.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
 		return nil
 	}

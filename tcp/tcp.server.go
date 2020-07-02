@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/266game/goserver/conn"
 )
 
 // TTCPServer 服务器类
@@ -16,11 +18,10 @@ type TTCPServer struct {
 	wgLn       sync.WaitGroup
 	wgConns    sync.WaitGroup
 
-	OnRun  func(*TConnection) // 自处理循环回调
-	OnRead func(*TData)       // 读取回调(buf, 包长, sessionid)
-
-	OnClientConnect    func(*TConnection) // 客户端连接上来了
-	OnClientDisconnect func(*TConnection) // 客户端断开了
+	OnRun              func(*conn.TConnection) // 自处理循环回调
+	OnRead             func(*conn.TData)       // 读取回调(buf, 包长, sessionid)
+	OnClientConnect    func(*conn.TConnection) // 客户端连接上来了
+	OnClientDisconnect func(*conn.TConnection) // 客户端断开了
 }
 
 func init() {
@@ -93,7 +94,7 @@ func (self *TTCPServer) run() {
 
 		self.wgConns.Add(1)
 
-		pConnection := CreateConnection(tcpConn)
+		pConnection := conn.CreateConnection(tcpConn)
 		strRemoteAddr := pConnection.RemoteAddr()
 		log.Println("监听到客户端的", strRemoteAddr, "连接")
 		if self.OnClientConnect != nil {
@@ -139,7 +140,7 @@ func (self *TTCPServer) run() {
 }
 
 // 拆包
-func (self *TTCPServer) unpack(buf []byte, nLen int, pConnection *TConnection) error {
+func (self *TTCPServer) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
 	// 我们规定前两个字节是包的实际长度, 我们认为棋牌游戏当中是不可能超过单个包10K的容量
 	nPackageLen := int(buf[0]) + int(buf[1])<<8
 
@@ -147,14 +148,14 @@ func (self *TTCPServer) unpack(buf []byte, nLen int, pConnection *TConnection) e
 		// 包长符合, 包满足,直接派发
 		log.Println("包长符合, 包满足,直接派发", nLen)
 		// pSession := self.session(, pConnection)
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		return nil
 	}
 
 	if nPackageLen < nLen {
 		// 这个包需要拆包处理
 		// pSession := self.session(buf[2:nPackageLen], nPackageLen-2, pConnection)
-		self.OnRead(NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		self.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
 		return nil
 	}

@@ -1,17 +1,15 @@
-package ws
+package conn
 
 import (
 	"net"
 	"sync"
 	"time"
-
-	"golang.org/x/net/websocket"
 )
 
 // TConnection 上下文会话
 type TConnection struct {
 	nIndex     uint64
-	pWSConn    *websocket.Conn
+	pConn      IConn
 	mutexConns sync.Mutex // 锁
 }
 
@@ -20,43 +18,43 @@ func (self *TConnection) GetIndex() uint64 {
 	return self.nIndex
 }
 
-// GetWsConn 得到TCP连接指针
-func (self *TConnection) GetWsConn() *websocket.Conn {
-	return self.pWSConn
+// GetConn 得到连接指针
+func (self *TConnection) GetConn() IConn {
+	return self.pConn
 }
 
 // Read 读取字节
 func (self *TConnection) Read(b []byte) (int, error) {
-	return self.pWSConn.Read(b)
+	return self.pConn.Read(b)
 }
 
 // Write 写字节
 func (self *TConnection) Write(buff []byte) (int, error) {
 	self.mutexConns.Lock()
 	defer self.mutexConns.Unlock()
-	return self.pWSConn.Write(buff)
+	return self.pConn.Write(buff)
 }
 
 // LocalAddr 本地socket端口地址
 func (self *TConnection) LocalAddr() net.Addr {
-	return self.pWSConn.LocalAddr()
+	return self.pConn.LocalAddr()
 }
 
 // RemoteAddr 远程socket端口地址
 func (self *TConnection) RemoteAddr() net.Addr {
-	return self.pWSConn.RemoteAddr()
+	return self.pConn.RemoteAddr()
 }
 
 // SetDeadline 设置超时时间
 // t = 0 意味着I/O操作不会超时。
 func (self *TConnection) SetDeadline(t time.Time) error {
-	return self.pWSConn.SetDeadline(t)
+	return self.pConn.SetDeadline(t)
 }
 
 // SetReadDeadline 设置读取的超时时间
 // t = 0 意味着I/O操作不会超时。
 func (self *TConnection) SetReadDeadline(t time.Time) error {
-	return self.pWSConn.SetReadDeadline(t)
+	return self.pConn.SetReadDeadline(t)
 }
 
 // WritePack 写字节, 并且自动补齐包头部分
@@ -75,7 +73,7 @@ func (self *TConnection) WritePack(buff []byte) (int, error) {
 	buffReal := append(buffLen[:], buff...)
 	self.mutexConns.Lock()
 	defer self.mutexConns.Unlock()
-	return self.pWSConn.Write(buffReal)
+	return self.pConn.Write(buffReal)
 }
 
 // Close 关闭连接
@@ -84,5 +82,5 @@ func (self *TConnection) Close() error {
 	defer self.mutexConns.Unlock()
 
 	deleteConnection(self.nIndex) // 从MAP中移除
-	return self.pWSConn.Close()
+	return self.pConn.Close()
 }
