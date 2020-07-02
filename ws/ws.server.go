@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -105,6 +106,8 @@ func (self *TWSServer) run() {
 			}),
 			Handshake: func(config *websocket.Config, r *http.Request) error {
 				log.Println("handshack")
+				config.Origin, _ = url.ParseRequestURI("ws://" + r.RemoteAddr + r.URL.RequestURI())
+
 				return nil
 			},
 		},
