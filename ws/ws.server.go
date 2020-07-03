@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ type TWSServer struct {
 	pListener   *net.TCPListener
 	mutexConns  sync.Mutex
 	wgLn        sync.WaitGroup
-	wgConns     sync.WaitGroup
+	// wgConns     sync.WaitGroup
 
 	OnRun              func(*conn.TConnection) // 自处理循环回调
 	OnRead             func(*conn.TData)       // 读取回调(buf, 包长, sessionid)
@@ -54,16 +55,13 @@ func (self *TWSServer) run() {
 	self.listen()
 	time.Sleep(time.Millisecond * 16)
 
-	self.wgLn.Add(1)
-	defer self.wgLn.Done()
-
 	httpServer := &http.Server{
 		Addr: self.strAddress,
 		Handler: websocket.Server{
 			Handler: websocket.Handler(func(tcpConn *websocket.Conn) {
 
-				// self.wg.Add(1)
-				// defer self.wg.Done()
+				self.wgLn.Add(1)
+				defer self.wgLn.Done()
 
 				pConnection := conn.CreateConnection(tcpConn)
 				log.Println("pConnection", pConnection)
@@ -80,7 +78,7 @@ func (self *TWSServer) run() {
 					}
 
 					pConnection.Close()
-					self.wgConns.Done()
+					// self.wgConns.Done()
 				}()
 
 				// 自带循环解包系统
@@ -108,6 +106,8 @@ func (self *TWSServer) run() {
 			}),
 			Handshake: func(config *websocket.Config, r *http.Request) error {
 				log.Println("handshack")
+				config.Origin, _ = url.ParseRequestURI("ws://" + r.RemoteAddr + r.URL.RequestURI())
+
 				return nil
 			},
 		},
@@ -123,7 +123,7 @@ func (self *TWSServer) run() {
 // Close 关闭
 func (self *TWSServer) Close() {
 	self.pListener.Close()
-
+	self.wgLn.Wait()
 }
 
 // 拆包
