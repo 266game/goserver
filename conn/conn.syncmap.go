@@ -7,6 +7,7 @@ import (
 var nAutoIncrease uint64
 var mpConnection sync.Map
 var mpChan sync.Map // 通道的ChanID
+var mutexAuto sync.Mutex
 
 func init() {
 	nAutoIncrease = 0
@@ -14,8 +15,11 @@ func init() {
 
 // CreateConnection 创建一个新的连接
 func CreateConnection(pConn IConn) *TConnection {
+	mutexAuto.Lock()
 	nAutoIncrease++
 	n := nAutoIncrease
+	mutexAuto.Unlock()
+
 	pConnection := &TConnection{}
 	pConnection.nIndex = n
 	pConnection.pConn = pConn
@@ -34,6 +38,13 @@ func FindConnection(nIndex uint64) *TConnection {
 
 func deleteConnection(nIndex uint64) {
 	mpConnection.Delete(nIndex)
+}
+
+// RangeConnection 遍历
+func RangeConnection(f func(key, value interface{}) bool) {
+	mutexAuto.Lock()
+	mpConnection.Range(f)
+	mutexAuto.Unlock()
 }
 
 // CreateChan 创建一个通道
