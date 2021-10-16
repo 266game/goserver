@@ -21,29 +21,29 @@ func NewData(buff []byte, nLen int, p *TConnection) *TData {
 }
 
 // GetBuffer 获取buffer
-func (self *TData) GetBuffer() []byte {
-	return self.buffer
+func (m *TData) GetBuffer() []byte {
+	return m.buffer
 }
 
 // GetIndex 获取自增索引
-func (self *TData) GetIndex() uint64 {
-	return self.pConnection.GetIndex()
+func (m *TData) GetIndex() uint64 {
+	return m.pConnection.GetIndex()
 }
 
 // GetConnection 获取连接
-func (self *TData) GetConnection() *TConnection {
-	return self.pConnection
+func (m *TData) GetConnection() *TConnection {
+	return m.pConnection
 }
 
 // GetLength 获取长度
-func (self *TData) GetLength() int {
-	return self.nLen
+func (m *TData) GetLength() int {
+	return m.nLen
 }
 
 // Print 打印
-func (self *TData) Print() {
-	buf := self.GetBuffer()
-	nLen := self.GetLength()
+func (m *TData) Print() {
+	buf := m.GetBuffer()
+	nLen := m.GetLength()
 
 	fmt.Print("     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F")
 	for i := 0; i < nLen; i++ {

@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -11,54 +12,95 @@ type TConnection struct {
 	nIndex     uint64
 	pConn      IConn
 	mutexConns sync.Mutex // 锁
+	pAes       *TAes
 }
 
 // GetIndex 获取索引值
-func (self *TConnection) GetIndex() uint64 {
-	return self.nIndex
+func (m *TConnection) GetIndex() uint64 {
+	return m.nIndex
 }
 
 // GetConn 得到连接指针
-func (self *TConnection) GetConn() IConn {
-	return self.pConn
+func (m *TConnection) GetConn() IConn {
+	return m.pConn
 }
 
 // Read 读取字节
-func (self *TConnection) Read(b []byte) (int, error) {
-	return self.pConn.Read(b)
+func (m *TConnection) Read(b []byte) (int, error) {
+	return m.pConn.Read(b)
 }
 
 // Write 写字节
-func (self *TConnection) Write(buff []byte) (int, error) {
-	self.mutexConns.Lock()
-	defer self.mutexConns.Unlock()
-	return self.pConn.Write(buff)
+func (m *TConnection) Write(buff []byte) (int, error) {
+	m.mutexConns.Lock()
+	defer m.mutexConns.Unlock()
+	return m.pConn.Write(buff)
 }
 
 // LocalAddr 本地socket端口地址
-func (self *TConnection) LocalAddr() net.Addr {
-	return self.pConn.LocalAddr()
+func (m *TConnection) LocalAddr() net.Addr {
+	return m.pConn.LocalAddr()
 }
 
 // RemoteAddr 远程socket端口地址
-func (self *TConnection) RemoteAddr() net.Addr {
-	return self.pConn.RemoteAddr()
+func (m *TConnection) RemoteAddr() net.Addr {
+	return m.pConn.RemoteAddr()
+}
+
+// RemoteAddrHost 获取远程socket端口地址的IP地址
+func (m *TConnection) RemoteAddrHost() string {
+	strHost, _, err := net.SplitHostPort(m.RemoteAddr().String())
+	if err != nil {
+		return ""
+	}
+	return strHost
 }
 
 // SetDeadline 设置超时时间
 // t = 0 意味着I/O操作不会超时。
-func (self *TConnection) SetDeadline(t time.Time) error {
-	return self.pConn.SetDeadline(t)
+func (m *TConnection) SetDeadline(t time.Time) error {
+	return m.pConn.SetDeadline(t)
 }
 
 // SetReadDeadline 设置读取的超时时间
 // t = 0 意味着I/O操作不会超时。
-func (self *TConnection) SetReadDeadline(t time.Time) error {
-	return self.pConn.SetReadDeadline(t)
+func (m *TConnection) SetReadDeadline(t time.Time) error {
+	return m.pConn.SetReadDeadline(t)
+}
+
+func (m *TConnection) SetAesKey(binAesKey []byte) {
+	m.pAes = NewAES(binAesKey)
+}
+
+func (m *TConnection) UnpackAes(buff []byte) ([]byte, error) {
+	if m.pAes == nil {
+		return buff, errors.New("")
+	}
+
+	buff2, err := m.pAes.UnAES(buff)
+
+	if err != nil {
+		return buff, err
+	}
+
+	return buff2, nil
+}
+
+// WriteAesPack 发送AES加密后的包
+func (m *TConnection) WriteAesPack(buff []byte) (int, error) {
+	if m.pAes == nil {
+		return 0, errors.New("no aes, please create first")
+	}
+
+	buff, err := m.pAes.CoAES(buff)
+	if err != nil {
+		return 0, err
+	}
+	return m.WritePack(buff)
 }
 
 // WritePack 写字节, 并且自动补齐包头部分
-func (self *TConnection) WritePack(buff []byte) (int, error) {
+func (m *TConnection) WritePack(buff []byte) (int, error) {
 	// 在这里要进行一轮组包
 	nLen := len(buff) + 2 // 需要补充2个字节的包长头
 	if nLen > 65535 {
@@ -71,16 +113,16 @@ func (self *TConnection) WritePack(buff []byte) (int, error) {
 
 	// 拼接带长度的Buff
 	buffReal := append(buffLen[:], buff...)
-	self.mutexConns.Lock()
-	defer self.mutexConns.Unlock()
-	return self.pConn.Write(buffReal)
+	m.mutexConns.Lock()
+	defer m.mutexConns.Unlock()
+	return m.pConn.Write(buffReal)
 }
 
 // Close 关闭连接
-func (self *TConnection) Close() error {
-	self.mutexConns.Lock()
-	defer self.mutexConns.Unlock()
+func (m *TConnection) Close() error {
+	m.mutexConns.Lock()
+	defer m.mutexConns.Unlock()
 
-	deleteConnection(self.nIndex) // 从MAP中移除
-	return self.pConn.Close()
+	deleteConnection(m.nIndex) // 从MAP中移除
+	return m.pConn.Close()
 }

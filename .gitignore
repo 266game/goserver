@@ -12,3 +12,4 @@
 *.out
 
 demo
+.DS_Store
