@@ -9,10 +9,12 @@ import (
 
 // TConnection 上下文会话
 type TConnection struct {
-	nIndex     uint64
-	pConn      IConn
-	mutexConns sync.Mutex // 锁
-	pAes       *TAes
+	nIndex         uint64
+	pConn          IConn
+	mutexConns     sync.Mutex // 锁
+	pAes           *TAes
+	nTag           int64       // 自定义tag, 存储用
+	pCustomPointer interface{} // 自定义的指针, 存储数据用
 }
 
 // GetIndex 获取索引值
@@ -125,4 +127,18 @@ func (m *TConnection) Close() error {
 
 	deleteConnection(m.nIndex) // 从MAP中移除
 	return m.pConn.Close()
+}
+
+//
+func (m *TConnection) SetCustomPointer(p interface{}) {
+	m.pCustomPointer = p
+}
+func (m *TConnection) GetCustomPointer() interface{} {
+	return m.pCustomPointer
+}
+func (m *TConnection) SetTag(n int64) {
+	m.nTag = n
+}
+func (m *TConnection) GetTag() int64 {
+	return m.nTag
 }
