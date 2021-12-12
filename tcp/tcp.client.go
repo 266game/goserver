@@ -33,131 +33,134 @@ func NewTCPClient() *TTCPClient {
 }
 
 // Connect 连接服务器
-func (self *TTCPClient) Connect(strAddress string) {
-	self.strAddress = strAddress
-	self.bClose = false
+func (m *TTCPClient) Connect(strAddress string) {
+	m.strAddress = strAddress
+	m.bClose = false
 
 	log.Println("Connect 地址", strAddress)
-	go self.run() // 尝试连接
+	go m.run() // 尝试连接
 }
 
 // Write 发送包
-func (self *TTCPClient) Write(buff []byte) (int, error) {
-	if self.pConnection == nil {
+func (m *TTCPClient) Write(buff []byte) (int, error) {
+	if m.pConnection == nil {
 		log.Println("客户端未连接")
 		return -1, errors.New("client have not connected")
 	}
-	return self.pConnection.Write(buff)
+	return m.pConnection.Write(buff)
 }
 
 // WritePack 发送封包, 并且自动粘头
-func (self *TTCPClient) WritePack(buff []byte) (int, error) {
-	if self.pConnection == nil {
+func (m *TTCPClient) WritePack(buff []byte) (int, error) {
+	if m.pConnection == nil {
 		log.Println("客户端未连接")
 		return -1, errors.New("client have not connected")
 	}
-	return self.pConnection.WritePack(buff)
+	return m.pConnection.WritePack(buff)
 }
 
 // 拨号
-func (self *TTCPClient) dial() *net.TCPConn {
+func (m *TTCPClient) dial() *net.TCPConn {
 	for {
-		tcpAddr, err := net.ResolveTCPAddr("tcp", self.strAddress)
+		tcpAddr, err := net.ResolveTCPAddr("tcp", m.strAddress)
 		if err != nil {
 			log.Println("错误", err)
 		}
 		conn, err := net.DialTCP("tcp", nil, tcpAddr)
-		if err == nil || self.bClose {
+		if err == nil || m.bClose {
 			return conn
 		}
 
-		// log.Println("连接到", self.strAddress, "错误", err)
+		// log.Println("连接到", m.strAddress, "错误", err)
 		time.Sleep(time.Second * 3) // 3秒后继续自动重新连接
 		continue
 	}
 }
 
 // 客户端尝试连接
-func (self *TTCPClient) run() {
-	tcpConn := self.dial() // 拨号与等待
+func (m *TTCPClient) run() {
+	tcpConn := m.dial() // 拨号与等待
 
 	if tcpConn == nil {
 		return
 	}
 
-	self.pConnection = conn.CreateConnection(tcpConn)
+	m.pConnection = conn.CreateConnection(tcpConn)
 	strRemoteAddr := tcpConn.RemoteAddr()
 	// 如果关闭了, 那么就关闭连接
-	if self.bClose {
-		self.pConnection.Close()
-		self.pConnection = nil
+	if m.bClose {
+		m.pConnection.Close()
+		m.pConnection = nil
 		return
 	}
 
-	if self.OnConnect != nil {
+	if m.OnConnect != nil {
 		// 连接回调
-		go self.OnConnect(self.pConnection)
+		m.OnConnect(m.pConnection)
 	}
 
 	// 在这里进行收包处理
 	func() {
-		if self.OnRun != nil {
-			self.OnRun(self.pConnection)
+		if m.OnRun != nil {
+			m.OnRun(m.pConnection)
 			return
 		}
 
 		// 默认循环解包系统
-		if self.OnRead != nil {
+		if m.OnRead != nil {
 			// 先定义一个4096的包长长度作为缓冲区
 			buf := make([]byte, 4096)
 			for {
 				//
-				nLen, err := self.pConnection.Read(buf)
+				nLen, err := m.pConnection.Read(buf)
 				if err != nil {
 					log.Println(err)
 					return
 				}
 				log.Println("实际接收的包长", nLen, err)
-				err = self.unpack(buf[0:nLen], nLen, self.pConnection)
+				_ = m.unpack(buf[0:nLen], nLen, m.pConnection)
 			}
 		} else {
 			log.Println("找不到处理网络的回调函数")
 		}
 	}()
 
+	if m.OnDisconnect != nil {
+		m.OnDisconnect(m.pConnection)
+	}
 	log.Println(strRemoteAddr, "断开连接")
 	// cleanup
-	self.pConnection.Close()
-	self.pConnection = nil
+	m.pConnection.Close()
+	m.pConnection = nil
 
-	if self.AutoReconnect {
+	if m.AutoReconnect {
 		time.Sleep(time.Second * 3) // 3秒后继续
-		self.run()
+		m.run()
 	}
 }
 
 // Close 关闭连接
-func (self *TTCPClient) Close() {
-	self.bClose = true
-	self.pConnection.Close()
+func (m *TTCPClient) Close() {
+	m.bClose = true
+	m.pConnection.Close()
 }
 
 // 拆包
-func (self *TTCPClient) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
+func (m *TTCPClient) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
 	// 我们规定前两个字节是包的实际长度, 我们认为棋牌游戏当中是不可能超过单个包10K的容量
 	nPackageLen := int(buf[0]) + int(buf[1])<<8
 
 	if nPackageLen == nLen {
 		// 包长符合, 包满足,直接派发
 		log.Println("包长符合")
-		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		m.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		return nil
 	}
 
 	if nPackageLen < nLen {
 		// 这个包需要拆包处理
-		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
-		self.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
+		m.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		m.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
 		return nil
 	}
 
@@ -172,7 +175,7 @@ func (self *TTCPClient) unpack(buf []byte, nLen int, pConnection *conn.TConnecti
 	}
 
 	buf = append(buf, buf1...)
-	self.unpack(buf, nLen+nLen1, pConnection)
+	m.unpack(buf, nLen+nLen1, pConnection)
 
 	return nil
 }

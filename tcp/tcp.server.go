@@ -14,9 +14,9 @@ type TTCPServer struct {
 	strAddress string // 服务器地址
 	MaxConnNum int
 	pListener  *net.TCPListener // 监听者
-	mutexConns sync.Mutex
-	wgLn       sync.WaitGroup
-	wgConns    sync.WaitGroup
+	// mutexConns sync.Mutex
+	wgLn    sync.WaitGroup
+	wgConns sync.WaitGroup
 
 	OnRun              func(*conn.TConnection) // 自处理循环回调
 	OnRead             func(*conn.TData)       // 读取回调(buf, 包长, sessionid)
@@ -35,23 +35,23 @@ func NewTCPServer() *TTCPServer {
 }
 
 // Start 启动服务器
-func (self *TTCPServer) Start(strAddress string) {
-	self.strAddress = strAddress
+func (m *TTCPServer) Start(strAddress string) {
+	m.strAddress = strAddress
 
 	log.Println("Start 地址", strAddress)
-	go self.run()
+	go m.run()
 }
 
 // Stop 停服
-func (self *TTCPServer) Stop() {
-	self.pListener.Close()
-	self.wgLn.Wait()
-	self.wgConns.Wait()
+func (m *TTCPServer) Stop() {
+	m.pListener.Close()
+	m.wgLn.Wait()
+	m.wgConns.Wait()
 }
 
 // 开始监听
-func (self *TTCPServer) listen() {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", self.strAddress)
+func (m *TTCPServer) listen() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", m.strAddress)
 	if err != nil {
 		log.Println("错误", err)
 	}
@@ -61,19 +61,19 @@ func (self *TTCPServer) listen() {
 		log.Println("错误", err)
 	}
 
-	self.pListener = pListener
+	m.pListener = pListener
 }
 
 // 运行
-func (self *TTCPServer) run() {
-	self.listen()
+func (m *TTCPServer) run() {
+	m.listen()
 	time.Sleep(time.Millisecond * 16)
-	self.wgLn.Add(1)
-	defer self.wgLn.Done()
+	m.wgLn.Add(1)
+	defer m.wgLn.Done()
 
 	var tempDelay time.Duration
 	for {
-		tcpConn, err := self.pListener.AcceptTCP()
+		tcpConn, err := m.pListener.AcceptTCP()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
@@ -92,36 +92,36 @@ func (self *TTCPServer) run() {
 		}
 		tempDelay = 0
 
-		self.wgConns.Add(1)
+		m.wgConns.Add(1)
 
 		pConnection := conn.CreateConnection(tcpConn)
 		strRemoteAddr := pConnection.RemoteAddr()
 		log.Println("监听到客户端的", strRemoteAddr, "连接")
-		if self.OnClientConnect != nil {
-			self.OnClientConnect(pConnection)
+		if m.OnClientConnect != nil {
+			m.OnClientConnect(pConnection)
 		}
 
 		go func() {
 			defer func() {
 				log.Println(strRemoteAddr, "断开连接")
 
-				if self.OnClientDisconnect != nil {
-					self.OnClientDisconnect(pConnection)
+				if m.OnClientDisconnect != nil {
+					m.OnClientDisconnect(pConnection)
 				}
 
 				pConnection.Close()
-				self.wgConns.Done()
+				m.wgConns.Done()
 			}()
 
-			// if self.OnClose
+			// if m.OnClose
 
 			// 自带循环解包系统
-			if self.OnRun != nil {
-				self.OnRun(pConnection)
+			if m.OnRun != nil {
+				m.OnRun(pConnection)
 				return
 			}
 			// 默认循环解包系统
-			if self.OnRead != nil {
+			if m.OnRead != nil {
 				// 先定义一个4096的包长长度作为缓冲区
 				buf := make([]byte, 4096)
 				for {
@@ -132,7 +132,7 @@ func (self *TTCPServer) run() {
 					}
 					//
 					log.Println("实际接收的包长", nLen, err)
-					err = self.unpack(buf[0:nLen], nLen, pConnection)
+					_ = m.unpack(buf[0:nLen], nLen, pConnection)
 				}
 			}
 		}()
@@ -140,23 +140,23 @@ func (self *TTCPServer) run() {
 }
 
 // 拆包
-func (self *TTCPServer) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
+func (m *TTCPServer) unpack(buf []byte, nLen int, pConnection *conn.TConnection) error {
 	// 我们规定前两个字节是包的实际长度, 我们认为棋牌游戏当中是不可能超过单个包10K的容量
 	nPackageLen := int(buf[0]) + int(buf[1])<<8
 
 	if nPackageLen == nLen {
 		// 包长符合, 包满足,直接派发
 		log.Println("包长符合, 包满足,直接派发", nLen)
-		// pSession := self.session(, pConnection)
-		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		// pSession := m.session(, pConnection)
+		m.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
 		return nil
 	}
 
 	if nPackageLen < nLen {
 		// 这个包需要拆包处理
-		// pSession := self.session(buf[2:nPackageLen], nPackageLen-2, pConnection)
-		self.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
-		self.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
+		// pSession := m.session(buf[2:nPackageLen], nPackageLen-2, pConnection)
+		m.OnRead(conn.NewData(buf[2:nPackageLen], nPackageLen-2, pConnection))
+		m.unpack(buf[nPackageLen:nLen], nLen-nPackageLen, pConnection)
 		return nil
 	}
 
@@ -171,7 +171,7 @@ func (self *TTCPServer) unpack(buf []byte, nLen int, pConnection *conn.TConnecti
 	}
 
 	buf = append(buf, buf1...)
-	self.unpack(buf, nLen+nLen1, pConnection)
+	m.unpack(buf, nLen+nLen1, pConnection)
 
 	return nil
 }
